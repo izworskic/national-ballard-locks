@@ -1,0 +1,67 @@
+name: Ship Ballard Cam 3 only
+
+on:
+  push:
+    branches:
+      - agent/ballard-cam3-only
+    paths:
+      - '.github/workflows/ship-cam3-only.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/ballard-cam3-only
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Replace camera block with direct Camera 3 stream
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('public/ballard-locks/index.html')
+          s=p.read_text()
+          start='<section class="section" id="camera">'
+          end='<section class="section"><div class="section-head"><div><div class="section-kicker">Infrastructure</div>'
+          if start not in s or end not in s:
+              raise SystemExit('camera section boundaries not found')
+          repl='''<section class="section" id="camera"><div class="section-head"><div><div class="section-kicker">Live visual check</div><h2>Live Ballard Ship Canal camera</h2></div><p>Camera 3 at Salmon Bay Marine Center gives a live upstream view of vessel activity on the Ship Canal.</p></div><div class="two"><div class="panel"><div class="camera-frame"><iframe title="Live Ballard Ship Canal Camera 3" loading="lazy" allowfullscreen src="https://g1.ipcamlive.com/player/player.php?alias=5ababb8154afe"></iframe></div><div class="notice">Live video from Salmon Bay Marine Center Camera #3, upstream of the Ballard Locks.</div></div><div class="side-box"><div class="metric-kicker">Coming next</div><h3>Tide timeline</h3><div id="tide-timeline" class="timeline"><div class="timeline-row"><span>Loading NOAA predictions</span><strong>…</strong></div></div></div></div></section>\n'''
+          a=s.index(start); b=s.index(end)
+          s=s[:a]+repl+s[b:]
+          s=s.replace('Live Ballard Ship Canal cameras','Live Ballard Ship Canal camera')
+          s=s.replace('verified nearby visual checks','a live Ship Canal camera')
+          s=s.replace('nearby Ship Canal cameras and the on-site view','the live Ship Canal camera and the on-site view')
+          s=s.replace('Salmon Bay Marine Center — live Ballard Ship Canal dock cameras','Salmon Bay Marine Center — live Ballard Ship Canal Camera #3')
+          p.write_text(s)
+
+          t=Path('tests/ballard-locks.test.js')
+          x=t.read_text()
+          x=x.replace("'Live Ballard Ship Canal cameras'","'Live Ballard Ship Canal camera'")
+          x=x.replace("assert.ok(page.includes('https://www.sbmc.com/dock-cams/'), 'missing verified SBMC live camera link');", "assert.ok(page.includes('https://g1.ipcamlive.com/player/player.php?alias=5ababb8154afe'), 'missing direct SBMC Camera 3 stream');\n  assert.ok(page.includes('Live video from Salmon Bay Marine Center Camera #3'), 'missing Camera 3 location label');\n  assert.ok(!page.includes('Open live Ship Canal cameras'), 'multi-camera picker link should not be present');")
+          t.write_text(x)
+          PY
+      - name: Verify Camera 3 player is reachable
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -L -sS -o /tmp/cam3.html -w '%{http_code}' 'https://g1.ipcamlive.com/player/player.php?alias=5ababb8154afe')
+          test "$code" = "200"
+          grep -qiE 'player|video|ipcamlive' /tmp/cam3.html
+      - name: Test
+        run: npm test
+      - name: Commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/ballard-locks/index.html tests/ballard-locks.test.js
+          git commit -m 'Embed SBMC Camera 3 live video only'
+          git push
