@@ -67,6 +67,20 @@ test('parser fails closed instead of borrowing another species table', () => {
   assert.equal(api.parseSpecies(fixture, 'Sockeye', {year:2026,month:9,day:8}), null);
 });
 
+test('CWMS parser selects the newest usable elevation value', () => {
+  const parsed = api.parseCwmsLatest({
+    values: [
+      [1788901200000, 20.41, 0],
+      [1788904800000, null, 0],
+      [1788908400000, 20.43, 0],
+      ['not-a-date', 20.99, 0],
+    ],
+  });
+  assert.equal(parsed.valueFt, 20.43);
+  assert.equal(parsed.observedAt, new Date(1788908400000).toISOString());
+  assert.equal(api.parseCwmsLatest({values:[[1788908400000, null, 0]]}), null);
+});
+
 test('visitor access uses Pacific-time published hours', () => {
   assert.equal(api.access({hour:8,minute:0}).groundsOpen, true);
   assert.equal(api.access({hour:8,minute:0}).fishLadderOpen, true);
