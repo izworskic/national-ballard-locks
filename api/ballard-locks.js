@@ -58,23 +58,23 @@ function ageDays(md, nowParts) {
 
 function speciesSection(page, species) {
   const wanted = String(species || '').toLowerCase();
-  const heading = new RegExp(`daily\\s+${wanted}\\s+counts`, 'i');
+  const heading = new RegExp(`(?:^|\\n)\\s*daily\\s+${wanted}\\s+counts\\s*(?:\\n|$)`, 'i');
   const hit = heading.exec(page);
   if (!hit) return null;
 
   const afterHeading = page.slice(hit.index + hit[0].length);
-  const current = /2026\s+daily\s+counts/i.exec(afterHeading);
+  const current = /(?:^|\n)\s*2026\s+daily\s+counts\s*(?:\n|$)/i.exec(afterHeading);
   if (!current) return null;
 
-  const tableStart = current.index;
-  const tail = afterHeading.slice(tableStart);
+  const tail = afterHeading.slice(current.index);
   const boundaries = [];
+  const afterYearOffset = current[0].length;
 
-  const older = /2025\s+daily\s+counts/i.exec(tail.slice(current[0].length));
-  if (older) boundaries.push(current[0].length + older.index);
+  const older = /(?:^|\n)\s*2025\s+daily\s+counts\s*(?:\n|$)/i.exec(tail.slice(afterYearOffset));
+  if (older) boundaries.push(afterYearOffset + older.index);
 
-  const nextSpecies = /daily\s+(sockeye|chinook|coho)\s+counts/ig;
-  nextSpecies.lastIndex = current[0].length;
+  const nextSpecies = /(?:^|\n)\s*daily\s+(sockeye|chinook|coho)\s+counts\s*(?:\n|$)/ig;
+  nextSpecies.lastIndex = afterYearOffset;
   let next;
   while ((next = nextSpecies.exec(tail))) {
     if (String(next[1]).toLowerCase() !== wanted) {
@@ -83,13 +83,14 @@ function speciesSection(page, species) {
     }
   }
 
-  const annual = /annual\s+(?:sockeye|chinook|coho)\s+counts/i.exec(tail.slice(current[0].length));
-  if (annual) boundaries.push(current[0].length + annual.index);
+  const annual = /(?:^|\n)\s*annual\s+(?:sockeye|chinook|coho)\s+counts\s*(?:\n|$)/i.exec(tail.slice(afterYearOffset));
+  if (annual) boundaries.push(afterYearOffset + annual.index);
 
-  const chart = new RegExp(`ballard\\s+locks\\s+${wanted}\\s+counts`, 'i').exec(tail.slice(current[0].length));
-  if (chart) boundaries.push(current[0].length + chart.index);
+  const chart = new RegExp(`(?:^|\\n)\\s*ballard\\s+locks\\s+${wanted}\\s+counts\\s*(?:\\n|$)`, 'i').exec(tail.slice(afterYearOffset));
+  if (chart) boundaries.push(afterYearOffset + chart.index);
 
-  const end = boundaries.length ? Math.min(...boundaries.filter(x => x > current[0].length)) : Math.min(tail.length, 30000);
+  const validBoundaries = boundaries.filter(x => x > afterYearOffset);
+  const end = validBoundaries.length ? Math.min(...validBoundaries) : Math.min(tail.length, 30000);
   return tail.slice(0, end);
 }
 
