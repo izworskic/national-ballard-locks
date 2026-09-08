@@ -165,7 +165,9 @@ function parseCwmsLatest(data) {
   for (const row of rows) {
     if (!Array.isArray(row) || row.length < 2) continue;
     const rawTime = row[0];
-    const valueFt = Number(row[1]);
+    const rawValue = row[1];
+    if (rawValue == null || !String(rawValue).trim()) continue;
+    const valueFt = Number(rawValue);
     if (!Number.isFinite(valueFt)) continue;
     let timeMs;
     if (typeof rawTime === 'number') timeMs = rawTime;
