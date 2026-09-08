@@ -56,20 +56,54 @@ function ageDays(md, nowParts) {
   return Math.max(0, Math.round((a - b) / 86400000));
 }
 
+function speciesSection(page, species) {
+  const wanted = String(species || '').toLowerCase();
+  const heading = new RegExp(`daily\\s+${wanted}\\s+counts`, 'i');
+  const hit = heading.exec(page);
+  if (!hit) return null;
+
+  const afterHeading = page.slice(hit.index + hit[0].length);
+  const current = /2026\s+daily\s+counts/i.exec(afterHeading);
+  if (!current) return null;
+
+  const tableStart = current.index;
+  const tail = afterHeading.slice(tableStart);
+  const boundaries = [];
+
+  const older = /2025\s+daily\s+counts/i.exec(tail.slice(current[0].length));
+  if (older) boundaries.push(current[0].length + older.index);
+
+  const nextSpecies = /daily\s+(sockeye|chinook|coho)\s+counts/ig;
+  nextSpecies.lastIndex = current[0].length;
+  let next;
+  while ((next = nextSpecies.exec(tail))) {
+    if (String(next[1]).toLowerCase() !== wanted) {
+      boundaries.push(next.index);
+      break;
+    }
+  }
+
+  const annual = /annual\s+(?:sockeye|chinook|coho)\s+counts/i.exec(tail.slice(current[0].length));
+  if (annual) boundaries.push(current[0].length + annual.index);
+
+  const chart = new RegExp(`ballard\\s+locks\\s+${wanted}\\s+counts`, 'i').exec(tail.slice(current[0].length));
+  if (chart) boundaries.push(current[0].length + chart.index);
+
+  const end = boundaries.length ? Math.min(...boundaries.filter(x => x > current[0].length)) : Math.min(tail.length, 30000);
+  return tail.slice(0, end);
+}
+
 function parseSpecies(page, species, nowParts) {
-  const lower = page.toLowerCase();
-  const needles = [`daily ${species.toLowerCase()} counts`, `ballard locks ${species.toLowerCase()} counts`, `${species.toLowerCase()} counts`];
-  let start = needles.map(x => lower.indexOf(x)).find(x => x >= 0);
-  if (start == null || start < 0) return null;
-  let slice = page.slice(start, start + 35000);
-  const current = slice.toLowerCase().indexOf('2026 daily counts');
-  if (current >= 0) slice = slice.slice(current);
-  const older = slice.toLowerCase().indexOf('2025 daily counts');
-  if (older > 0) slice = slice.slice(0, older);
+  const slice = speciesSection(page, species);
+  if (!slice) return null;
   const rows = [];
   const re = /(?:^|\n)\s*(\d{1,2}\/\d{1,2}(?:-\d{1,2}\/\d{1,2})?)\s*\|\s*([\d,]+)\s*\|\s*([\d,]+)/gm;
   let m;
-  while ((m = re.exec(slice))) rows.push({ date: m[1], daily: n(m[2]), total: n(m[3]) });
+  while ((m = re.exec(slice))) {
+    const daily = n(m[2]);
+    const total = n(m[3]);
+    if (daily !== null && total !== null) rows.push({ date: m[1], daily, total });
+  }
   if (!rows.length) return null;
   const latest = rows[rows.length - 1];
   const recent = rows.slice(-7);
@@ -83,7 +117,7 @@ async function fish(nowParts) {
   try {
     const page = text(await get(WDFW, 'text'));
     const species = ['Sockeye','Chinook','Coho'].map(s => parseSpecies(page, s, nowParts)).filter(Boolean);
-    if (!species.length) throw new Error('No current WDFW tables parsed');
+    if (species.length !== 3) throw new Error(`Expected 3 WDFW species tables, parsed ${species.length}`);
     return { ok:true, cadence:'daily', species, source:'Washington Department of Fish & Wildlife', url:WDFW };
   } catch (e) {
     return { ok:false, source:'Washington Department of Fish & Wildlife', url:WDFW, error:e.message };
@@ -210,4 +244,4 @@ async function handler(req,res) {
 }
 
 module.exports = handler;
-module.exports._test = { text, parseSpecies, pacificParts, access, locks, salmonSignal, score, build };
+module.exports._test = { text, speciesSection, parseSpecies, pacificParts, access, locks, salmonSignal, score, build };
