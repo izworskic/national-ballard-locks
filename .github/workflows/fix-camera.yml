@@ -1,0 +1,59 @@
+name: Fix Ballard camera
+
+on:
+  push:
+    branches:
+      - agent/fix-ballard-camera-2
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Replace dead Ballard camera with verified Ship Canal cams'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-ballard-camera-2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Patch camera section and tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('public/ballard-locks/index.html')
+          s = p.read_text()
+          s = s.replace('water level and cameras in one place.', 'water level and verified nearby visual checks in one place.')
+          s = s.replace('weather, cameras and visitor intelligence', 'weather and visitor intelligence')
+          s = s.replace('operating status and cameras.', 'operating status and nearby live canal camera links.')
+          s = s.replace('then use the camera and on-site view for the complete traffic picture.', 'then use nearby Ship Canal cameras and the on-site view for a fuller traffic picture.')
+          old = '''<section class="section" id="camera"><div class="section-head"><div><div class="section-kicker">Live view</div><h2>Ballard Locks camera</h2></div><p>The dedicated Ballard Locks Webcam channel streams boating traffic and weather conditions when its live feed is active.</p></div><div class="two"><div class="panel"><div class="camera-frame"><iframe title="Ballard Locks live webcam" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen src="https://www.youtube.com/embed/live_stream?channel=UC1roj2AL1R0DxTjjX89gbEQ&amp;autoplay=0&amp;mute=1"></iframe></div><div class="notice">Third-party live stream. If the embed is offline, open the <a href="https://www.youtube.com/@BallardLocksWebcam/live" target="_blank" rel="noopener">Ballard Locks Webcam channel ↗</a>.</div></div><div class="side-stack"><div class="side-box"><div class="metric-kicker">Coming next</div><h3>Tide timeline</h3><div id="tide-timeline" class="timeline"><div class="timeline-row"><span>Loading NOAA predictions</span><strong>…</strong></div></div></div><div class="side-box"><div class="metric-kicker">Other visual checks</div><h3>Canal traffic webcams</h3><p>BallardLocks.org points boaters to webcams upstream of the locks to help gauge canal traffic.</p><a class="btn dark" href="https://ballardlocks.org/boating-information.html" target="_blank" rel="noopener">Open boater cameras ↗</a></div></div></div></section>'''
+          new = '''<section class="section" id="camera"><div class="section-head"><div><div class="section-kicker">Live visual check</div><h2>Live Ballard Ship Canal cameras</h2></div><p>There is no dedicated public webcam at the Locks. For a nearby live look at vessel traffic, use the Salmon Bay Marine Center dock cameras on the Ship Canal.</p></div><div class="two"><div class="side-box"><div class="metric-kicker">Verified nearby live cameras</div><h3>Salmon Bay Marine Center dock cams</h3><p>These cameras show live Ballard Ship Canal activity 24/7 from Salmon Bay Marine Center, upstream of the Locks. They are useful for spotting larger recreational and commercial traffic that may be headed toward the Locks.</p><a class="btn dark" href="https://www.sbmc.com/dock-cams/" target="_blank" rel="noopener">Open live Ship Canal cameras ↗</a><p class="small"><strong>Location note:</strong> these are nearby Ship Canal cameras, not cameras mounted at the Ballard Locks.</p></div><div class="side-stack"><div class="side-box"><div class="metric-kicker">Coming next</div><h3>Tide timeline</h3><div id="tide-timeline" class="timeline"><div class="timeline-row"><span>Loading NOAA predictions</span><strong>…</strong></div></div></div><div class="side-box"><div class="metric-kicker">Source check</div><h3>No dedicated Locks webcam</h3><p>BallardLocks.org explicitly notes that no webcams are dedicated to the Locks and instead directs boaters to local marina webcams for a glimpse of canal traffic.</p><a class="btn" href="https://ballardlocks.org/web-cams-at-the-locks.html" target="_blank" rel="noopener">Camera source note ↗</a></div></div></div></section>'''
+          if old not in s:
+              raise SystemExit('camera block not found')
+          s = s.replace(old, new)
+          s = s.replace('</a></li></ul></section>', '</a></li><li><a href="https://www.sbmc.com/dock-cams/" target="_blank" rel="noopener">Salmon Bay Marine Center — live Ballard Ship Canal dock cameras</a></li></ul></section>', 1)
+          p.write_text(s)
+
+          t = Path('tests/ballard-locks.test.js')
+          x = t.read_text()
+          x = x.replace("'Ballard Locks camera'", "'Live Ballard Ship Canal cameras'")
+          insert = "\n  assert.ok(page.includes('https://www.sbmc.com/dock-cams/'), 'missing verified SBMC live camera link');\n  assert.ok(!page.includes('UC1roj2AL1R0DxTjjX89gbEQ'), 'dead Ballard Locks YouTube embed still present');\n"
+          marker = "  assert.match(page, /not an official lockage count/i);\n"
+          if marker not in x:
+              raise SystemExit('test marker not found')
+          x = x.replace(marker, marker + insert)
+          t.write_text(x)
+          PY
+      - name: Test
+        run: npm test
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/ballard-locks/index.html tests/ballard-locks.test.js
+          git commit -m "Replace dead Ballard camera with verified Ship Canal cams"
+          git push origin HEAD:agent/fix-ballard-camera-2
