@@ -67,18 +67,20 @@ test('parser fails closed instead of borrowing another species table', () => {
   assert.equal(api.parseSpecies(fixture, 'Sockeye', {year:2026,month:9,day:8}), null);
 });
 
-test('CWMS parser selects the newest usable elevation value', () => {
-  const parsed = api.parseCwmsLatest({
-    values: [
-      [1788901200000, 20.41, 0],
-      [1788904800000, null, 0],
-      [1788908400000, 20.43, 0],
-      ['not-a-date', 20.99, 0],
+test('USACE Access to Water parser selects the live LWSC elevation series', () => {
+  const parsed = api.parseA2wLatest([{
+    provider:'NWS',
+    code:'LWSC',
+    timeseries:[
+      {tsid:'LWSC.Flow.Ave.~1Day.1Day.CENWS-COMPUTED-RAW',label:'Outflow',unit:'cfs',latest_time:'2026-09-08T07:00:00Z',latest_value:249.57},
+      {tsid:'LWSC.Elev-Lake.Ave.1Hour.1Hour.IRIDIUM-REV',label:'Elevation',unit:'ft',latest_time:'2026-09-08T22:00:00Z',latest_value:20.25,delta24hr:-0.03},
     ],
-  });
-  assert.equal(parsed.valueFt, 20.43);
-  assert.equal(parsed.observedAt, new Date(1788908400000).toISOString());
-  assert.equal(api.parseCwmsLatest({values:[[1788908400000, null, 0]]}), null);
+  }]);
+  assert.equal(parsed.valueFt, 20.25);
+  assert.equal(parsed.observedAt, '2026-09-08T22:00:00.000Z');
+  assert.equal(parsed.delta24hr, -0.03);
+  assert.equal(parsed.tsid, 'LWSC.Elev-Lake.Ave.1Hour.1Hour.IRIDIUM-REV');
+  assert.equal(api.parseA2wLatest([{timeseries:[{label:'Elevation',unit:'ft',latest_time:null,latest_value:null}]}]), null);
 });
 
 test('visitor access uses Pacific-time published hours', () => {
