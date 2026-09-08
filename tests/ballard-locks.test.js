@@ -13,14 +13,16 @@ test('page has one canonical H1 and the branded canonical URL', () => {
 });
 
 test('page contains all core live layers and explicit AIS caveat', () => {
-  for (const phrase of ['Go-now visitor score','Live marine traffic','Ballard Locks salmon activity','Live Ballard Ship Canal cameras','National Weather Service','USACE']) {
+  for (const phrase of ['Go-now visitor score','Live marine traffic','Ballard Locks salmon activity','Live Ballard Ship Canal camera','National Weather Service','USACE']) {
     assert.ok(page.includes(phrase), `missing ${phrase}`);
   }
   assert.ok(page.includes('NOAA Tides &amp; Currents'), 'missing NOAA Tides & Currents source label');
   assert.match(page, /AIS map does not represent every pleasure boat/i);
   assert.match(page, /not an official lockage count/i);
 
-  assert.ok(page.includes('https://www.sbmc.com/dock-cams/'), 'missing verified SBMC live camera link');
+  assert.ok(page.includes('https://g1.ipcamlive.com/player/player.php?alias=5ababb8154afe'), 'missing direct SBMC Camera 3 stream');
+  assert.ok(page.includes('Live video from Salmon Bay Marine Center Camera #3'), 'missing Camera 3 location label');
+  assert.ok(!page.includes('Open live Ship Canal cameras'), 'multi-camera picker link should not be present');
   assert.ok(!page.includes('UC1roj2AL1R0DxTjjX89gbEQ'), 'dead Ballard Locks YouTube embed still present');
 });
 
