@@ -13,7 +13,10 @@ test('page has one canonical H1 and the branded canonical URL', () => {
 });
 
 test('page contains all core live layers and explicit AIS caveat', () => {
-  for (const phrase of ['Go-now visitor score','Live marine traffic','Ballard Locks salmon activity','Ballard Locks camera','NOAA Tides &amp; Currents','National Weather Service','USACE']) assert.match(page, new RegExp(phrase.replace('&','&amp;?')));
+  for (const phrase of ['Go-now visitor score','Live marine traffic','Ballard Locks salmon activity','Ballard Locks camera','National Weather Service','USACE']) {
+    assert.ok(page.includes(phrase), `missing ${phrase}`);
+  }
+  assert.ok(page.includes('NOAA Tides &amp; Currents'), 'missing NOAA Tides & Currents source label');
   assert.match(page, /AIS map does not represent every pleasure boat/i);
   assert.match(page, /not an official lockage count/i);
 });
@@ -28,10 +31,10 @@ test('fish parser extracts a current species table and ignores blank rows', () =
 });
 
 test('visitor access uses Pacific-time published hours', () => {
-  assert.deepEqual(api.access({hour:8,minute:0}).groundsOpen, true);
-  assert.deepEqual(api.access({hour:8,minute:0}).fishLadderOpen, true);
-  assert.deepEqual(api.access({hour:21,minute:0}).groundsOpen, false);
-  assert.deepEqual(api.access({hour:20,minute:50}).fishLadderOpen, false);
+  assert.equal(api.access({hour:8,minute:0}).groundsOpen, true);
+  assert.equal(api.access({hour:8,minute:0}).fishLadderOpen, true);
+  assert.equal(api.access({hour:21,minute:0}).groundsOpen, false);
+  assert.equal(api.access({hour:20,minute:50}).fishLadderOpen, false);
 });
 
 test('published maintenance windows affect only the scheduled chamber', () => {
