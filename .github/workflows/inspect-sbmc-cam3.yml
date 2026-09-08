@@ -1,6 +1,9 @@
 name: Inspect SBMC Cam 3
 
 on:
+  push:
+    paths:
+      - '.github/workflows/inspect-sbmc-cam3.yml'
   workflow_dispatch:
 
 permissions:
