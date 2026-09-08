@@ -21,13 +21,48 @@ test('page contains all core live layers and explicit AIS caveat', () => {
   assert.match(page, /not an official lockage count/i);
 });
 
-test('fish parser extracts a current species table and ignores blank rows', () => {
-  const fixture = `Daily Coho Counts\n2026 daily counts\nDate | Daily Count | Running Total\n9/1 | 13 | 433\n9/2 | 76 | 509\n9/3 | 463 | 972\n9/4 |  | 972\n2025 daily counts`;
-  const parsed = api.parseSpecies(fixture, 'Coho', {year:2026,month:9,day:8});
-  assert.equal(parsed.latest.date, '9/3');
-  assert.equal(parsed.latest.daily, 463);
-  assert.equal(parsed.latest.total, 972);
-  assert.equal(parsed.ageDays, 5);
+test('fish parser isolates WDFW species tables and tolerates whitespace in headings', () => {
+  const fixture = `
+Daily\n coho counts
+2026 daily counts
+Date | Daily Count | Running Total
+9/1 | 13 | 433
+9/2 | 76 | 509
+9/3 | 463 | 972
+9/4 |  | 972
+Ballard Locks coho counts
+Daily sockeye counts
+2026 daily counts
+Date | Daily Count | Running Total
+9/1 | 0 | 31,302
+9/2 | 0 | 31,302
+9/3 | 0 | 31,302
+Ballard Locks sockeye counts
+Daily   Chinook counts
+2026 daily counts
+Date | Daily Count | Running Total
+9/1 | 177 | 11,210
+9/2 | 28 | 11,238
+9/3 | 131 | 11,369
+9/4 |  | 
+Annual sockeye counts
+`;
+  const now = {year:2026,month:9,day:8};
+  const coho = api.parseSpecies(fixture, 'Coho', now);
+  const sockeye = api.parseSpecies(fixture, 'Sockeye', now);
+  const chinook = api.parseSpecies(fixture, 'Chinook', now);
+
+  assert.deepEqual(coho.latest, {date:'9/3',daily:463,total:972});
+  assert.deepEqual(sockeye.latest, {date:'9/3',daily:0,total:31302});
+  assert.deepEqual(chinook.latest, {date:'9/3',daily:131,total:11369});
+  assert.equal(coho.ageDays, 5);
+  assert.equal(sockeye.ageDays, 5);
+  assert.equal(chinook.ageDays, 5);
+});
+
+test('parser fails closed instead of borrowing another species table', () => {
+  const fixture = `Ballard Locks sockeye counts\n2026 daily counts\n9/3 | 0 | 31,302\nDaily Chinook counts\n2026 daily counts\n9/3 | 131 | 11,369`;
+  assert.equal(api.parseSpecies(fixture, 'Sockeye', {year:2026,month:9,day:8}), null);
 });
 
 test('visitor access uses Pacific-time published hours', () => {
