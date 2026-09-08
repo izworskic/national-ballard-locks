@@ -21,9 +21,11 @@ test('page contains all core live layers and explicit AIS caveat', () => {
   assert.match(page, /not an official lockage count/i);
 });
 
-test('fish parser isolates WDFW species tables and tolerates whitespace in headings', () => {
+test('fish parser binds to standalone WDFW headings, not prose mentions', () => {
   const fixture = `
-Daily\n coho counts
+Preliminary daily Chinook counts are typically available from late July through September and daily coho counts are typically available from early September into October.
+Daily
+ coho counts
 2026 daily counts
 Date | Daily Count | Running Total
 9/1 | 13 | 433
