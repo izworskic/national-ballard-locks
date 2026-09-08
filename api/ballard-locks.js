@@ -6,13 +6,18 @@ const WDFW = 'https://wdfw.wa.gov/fishing/reports/counts/lake-washington';
 const USACE = 'https://www.nws.usace.army.mil/Missions/Civil-Works/Locks-and-Dams/Chittenden-Locks/';
 const CLOSURES = `${USACE}Closures/`;
 const LEVEL = 'https://water.usace.army.mil/office/nws/data/lkw_lwsc_plot';
+const CWMS_TSID = 'LWSC.Elev-Lake.Ave.1Hour.1Hour.IRIDIUM-REV';
+const CWMS_BASES = [
+  'https://water.usace.army.mil/cwms-data/timeseries',
+  'https://cwms-data.usace.army.mil/cwms-data/timeseries',
+];
 const UA = 'BallardLocksLive/1.0 (+https://chrisizworski.com/ballard-locks/)';
 
-async function get(url, type = 'json', timeout = 5000) {
+async function get(url, type = 'json', timeout = 5000, extraHeaders = {}) {
   const c = new AbortController();
   const timer = setTimeout(() => c.abort(), timeout);
   try {
-    const r = await fetch(url, { headers: { 'user-agent': UA, accept: '*/*' }, signal: c.signal });
+    const r = await fetch(url, { headers: { 'user-agent': UA, accept: '*/*', ...extraHeaders }, signal: c.signal });
     if (!r.ok) throw new Error(`${new URL(url).hostname} returned ${r.status}`);
     return type === 'text' ? r.text() : r.json();
   } finally { clearTimeout(timer); }
@@ -154,15 +159,67 @@ async function weather() {
   } catch(e) { return { ok:false, source:'National Weather Service', error:e.message, url:'https://forecast.weather.gov/MapClick.php?lat=47.66556&lon=-122.39722' }; }
 }
 
+function parseCwmsLatest(data) {
+  const rows = Array.isArray(data?.values) ? data.values : [];
+  let latest = null;
+  for (const row of rows) {
+    if (!Array.isArray(row) || row.length < 2) continue;
+    const rawTime = row[0];
+    const valueFt = Number(row[1]);
+    if (!Number.isFinite(valueFt)) continue;
+    let timeMs;
+    if (typeof rawTime === 'number') timeMs = rawTime;
+    else {
+      const parsed = Date.parse(String(rawTime));
+      if (!Number.isFinite(parsed)) continue;
+      timeMs = parsed;
+    }
+    if (!Number.isFinite(timeMs)) continue;
+    if (!latest || timeMs > latest.timeMs) latest = { timeMs, valueFt };
+  }
+  if (!latest) return null;
+  return { valueFt: latest.valueFt, observedAt: new Date(latest.timeMs).toISOString() };
+}
+
 async function lakeLevel() {
+  const errors = [];
+  for (const base of CWMS_BASES) {
+    try {
+      const params = new URLSearchParams({ name:CWMS_TSID, office:'NWS', unit:'ft', begin:'PT-48H' });
+      const url = `${base}?${params.toString()}`;
+      const data = await get(url, 'json', 6500, { accept:'application/json;version=2' });
+      const latest = parseCwmsLatest(data);
+      if (!latest) throw new Error('CWMS response contained no usable elevation values');
+      if (latest.valueFt < 18 || latest.valueFt > 24) throw new Error(`CWMS elevation outside expected range: ${latest.valueFt}`);
+      const ageHours = Math.max(0, Math.round(((Date.now() - Date.parse(latest.observedAt)) / 3600000) * 10) / 10);
+      if (ageHours > 72) throw new Error(`CWMS elevation is stale by ${ageHours} hours`);
+      return {
+        ok:true,
+        valueFt:latest.valueFt,
+        observedAt:latest.observedAt,
+        ageHours,
+        targetRangeFt:[20,22],
+        provisional:true,
+        source:'USACE CWMS Data API',
+        tsid:CWMS_TSID,
+        url:base,
+      };
+    } catch (e) {
+      errors.push(`${new URL(base).hostname}: ${e.message}`);
+    }
+  }
+
   try {
     const page = text(await get(LEVEL, 'text'));
     const match = page.match(/(?:LWSC|Lake Washington Ship Canal)[\s\S]{0,8000}?(2[01]\.\d{1,2})\s*(?:ft|feet)?/i) || page.match(/(2[01]\.\d{1,2})\s*(?:ft|feet)/i);
     if (!match) throw new Error('Current elevation not safely machine-readable');
     const valueFt = +match[1];
     if (valueFt < 18 || valueFt > 24) throw new Error('Elevation outside expected range');
-    return { ok:true, valueFt, targetRangeFt:[20,22], provisional:true, source:'USACE Seattle Water Management', url:LEVEL };
-  } catch(e) { return { ok:false, targetRangeFt:[20,22], source:'USACE Seattle Water Management', error:e.message, url:LEVEL }; }
+    return { ok:true, valueFt, targetRangeFt:[20,22], provisional:true, source:'USACE Seattle Water Management', url:LEVEL, note:'CWMS API unavailable; using legacy USACE page fallback.' };
+  } catch(e) {
+    errors.push(`legacy page: ${e.message}`);
+    return { ok:false, targetRangeFt:[20,22], source:'USACE Seattle Water Management', error:errors.join('; '), url:LEVEL };
+  }
 }
 
 const plannedClosures = [
@@ -245,4 +302,4 @@ async function handler(req,res) {
 }
 
 module.exports = handler;
-module.exports._test = { text, speciesSection, parseSpecies, pacificParts, access, locks, salmonSignal, score, build };
+module.exports._test = { text, speciesSection, parseSpecies, parseCwmsLatest, pacificParts, access, locks, salmonSignal, score, build };
