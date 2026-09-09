@@ -1,4 +1,4 @@
-name: Build live layers into Ballard tour map
+name: Finalize live layers on Ballard tour map
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  finalize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,14 +21,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Patch tour map
-        run: python scripts/patch-ballard-tour-live.py
+      - name: Fix live-layer listener placement
+        run: python scripts/fix-ballard-live-listeners.py
       - name: Verify authoritative package
         run: npm test
-      - name: Commit live map layers
+      - name: Commit final live map implementation
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add public/ballard-locks/tour/index.html tests/ballard-tour.test.js
-          git commit -m 'Put fish AIS and camera on Ballard tour map'
+          git commit -m 'Finalize Ballard tour live map layers'
           git push
