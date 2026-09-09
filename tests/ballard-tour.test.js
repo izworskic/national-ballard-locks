@@ -30,3 +30,17 @@ test('main Ballard page exposes the interactive tour',()=>{
   assert.ok(main.includes('https://chrisizworski.com/ballard-locks/tour/'));
   assert.ok(main.includes('Explore the Locks stop by stop'));
 });
+
+test('tour puts fish AIS and the live camera directly on the map',()=>{
+  assert.ok(!tour.includes('What this map adds'));
+  assert.ok(tour.includes('id="map-live-dock"'));
+  assert.ok(tour.includes('data-live-panel="fish"'));
+  assert.ok(tour.includes('data-live-panel="ais"'));
+  assert.ok(tour.includes('data-live-panel="camera"'));
+  assert.ok(tour.includes('https://embed.myshiptracking.com/embed?myst'));
+  assert.ok(tour.includes('https://g1.ipcamlive.com/player/player.php?alias=5ababb8154afe'));
+  for(const species of ['Sockeye','Chinook','Coho']) assert.ok(tour.includes(species));
+  assert.ok(tour.includes('latest published daily counts, not a live fish counter'));
+  assert.ok(!tour.includes("function setRoute(key){current=key;document.querySelectorAll('.map-live-tab')"));
+  assert.equal((tour.match(/map-live-tab'\)\.forEach\(b=>b\.addEventListener/g)||[]).length,1);
+});
