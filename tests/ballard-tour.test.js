@@ -9,7 +9,8 @@ const main=fs.readFileSync(path.join(__dirname,'..','public','ballard-locks','in
 test('interactive tour has canonical route, one H1 and no paid map key dependency',()=>{
   assert.equal((tour.match(/<h1\b/g)||[]).length,1);
   assert.match(tour,/https:\/\/chrisizworski\.com\/ballard-locks\/tour\//);
-  assert.ok(tour.includes('https://tiles.openfreemap.org/styles/liberty'));
+  assert.ok(tour.includes('id="tour-ais-underlay"'));
+  assert.ok(tour.includes('style:{version:8,sources:{},layers:[]}'));
   assert.ok(tour.includes('maplibre-gl@5'));
   assert.doesNotMatch(tour,/mapbox.*access[_-]?token/i);
   assert.doesNotMatch(tour,/api[_-]?key=/i);
@@ -31,16 +32,24 @@ test('main Ballard page exposes the interactive tour',()=>{
   assert.ok(main.includes('Explore the Locks stop by stop'));
 });
 
-test('tour puts fish AIS and the live camera directly on the map',()=>{
+test('tour combines AIS vessels with walking routes while Fish and Camera stay in the bar',()=>{
   assert.ok(!tour.includes('What this map adds'));
-  assert.ok(tour.includes('id="map-live-dock"'));
+  assert.ok(tour.includes('id="tour-ais-underlay"'));
+  assert.ok(tour.includes('id="tour-map" class="map map-overlay"'));
+  assert.ok(tour.indexOf('id="tour-ais-underlay"') < tour.indexOf('id="tour-map"'));
   assert.ok(tour.includes('data-live-panel="fish"'));
-  assert.ok(tour.includes('data-live-panel="ais"'));
   assert.ok(tour.includes('data-live-panel="camera"'));
+  assert.ok(!tour.includes('data-live-panel="ais"'));
+  assert.ok(!tour.includes('id="map-live-panel-ais"'));
   assert.ok(tour.includes('https://embed.myshiptracking.com/embed?myst'));
   assert.ok(tour.includes('https://g1.ipcamlive.com/player/player.php?alias=5ababb8154afe'));
+  assert.ok(tour.includes('const routeViews='));
+  assert.ok(tour.includes('function setAisView(key)'));
+  assert.ok(tour.includes("map.jumpTo({center:v.center,zoom:v.zoom})"));
+  assert.ok(!tour.includes('map.fitBounds(bounds'));
+  assert.ok(!tour.includes("map.flyTo({center:[s.lng,s.lat]"));
+  assert.ok(tour.includes('pointer-events:none'));
   for(const species of ['Sockeye','Chinook','Coho']) assert.ok(tour.includes(species));
   assert.ok(tour.includes('latest published daily counts, not a live fish counter'));
-  assert.ok(!tour.includes("function setRoute(key){current=key;document.querySelectorAll('.map-live-tab')"));
   assert.equal((tour.match(/map-live-tab'\)\.forEach\(b=>b\.addEventListener/g)||[]).length,1);
 });
