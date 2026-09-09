@@ -42,6 +42,7 @@ test('tour combines AIS vessels with walking routes while Fish and Camera stay i
   assert.ok(!tour.includes('data-live-panel="ais"'));
   assert.ok(!tour.includes('id="map-live-panel-ais"'));
   assert.ok(tour.includes('https://embed.myshiptracking.com/embed?myst'));
+  assert.ok(tour.includes('LIVE AIS · positions update automatically'));
   assert.ok(tour.includes('https://g1.ipcamlive.com/player/player.php?alias=5ababb8154afe'));
   assert.ok(tour.includes('const routeViews='));
   assert.ok(tour.includes('function setAisView(key)'));
