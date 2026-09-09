@@ -9,8 +9,9 @@ const main=fs.readFileSync(path.join(__dirname,'..','public','ballard-locks','in
 test('interactive tour has canonical route, one H1 and no paid map key dependency',()=>{
   assert.equal((tour.match(/<h1\b/g)||[]).length,1);
   assert.match(tour,/https:\/\/chrisizworski\.com\/ballard-locks\/tour\//);
-  assert.ok(tour.includes('id="tour-ais-underlay"'));
-  assert.ok(tour.includes('style:{version:8,sources:{},layers:[]}'));
+  assert.ok(!tour.includes('id="tour-ais-underlay"'));
+  assert.ok(tour.includes('https://tiles.openfreemap.org/styles/liberty'));
+  assert.ok(tour.includes('/api/ballard-ais'));
   assert.ok(tour.includes('maplibre-gl@5'));
   assert.doesNotMatch(tour,/mapbox.*access[_-]?token/i);
   assert.doesNotMatch(tour,/api[_-]?key=/i);
@@ -32,30 +33,24 @@ test('main Ballard page exposes the interactive tour',()=>{
   assert.ok(main.includes('Explore the Locks stop by stop'));
 });
 
-test('tour combines AIS vessels with walking routes while Fish and Camera stay in the bar',()=>{
+test('tour renders AIS vessels, walking routes and stops in one MapLibre map',()=>{
   assert.ok(!tour.includes('What this map adds'));
-  assert.ok(tour.includes('id="tour-ais-underlay"'));
+  assert.ok(!tour.includes('id="tour-ais-underlay"'));
+  assert.ok(!tour.includes('embed.myshiptracking.com'));
+  assert.ok(!tour.includes('syncAisToMap'));
   assert.ok(tour.includes('id="tour-map" class="map map-overlay"'));
-  assert.ok(tour.indexOf('id="tour-ais-underlay"') < tour.indexOf('id="tour-map"'));
+  assert.ok(tour.includes('https://tiles.openfreemap.org/styles/liberty'));
+  assert.ok(tour.includes("map.addSource('ais-vessels'"));
+  assert.ok(tour.includes("id:'ais-vessels'"));
+  assert.ok(tour.includes('/api/ballard-ais'));
+  assert.ok(tour.includes('setInterval(loadAis,15000)'));
+  assert.ok(tour.includes('LIVE AIS'));
   assert.ok(tour.includes('data-live-panel="fish"'));
   assert.ok(tour.includes('data-live-panel="camera"'));
   assert.ok(!tour.includes('data-live-panel="ais"'));
-  assert.ok(!tour.includes('id="map-live-panel-ais"'));
-  assert.ok(tour.includes('https://embed.myshiptracking.com/embed?myst'));
-  assert.ok(tour.includes('LIVE AIS · positions update automatically'));
   assert.ok(tour.includes('https://g1.ipcamlive.com/player/player.php?alias=5ababb8154afe'));
-  assert.ok(tour.includes('const routeViews='));
-  assert.ok(tour.includes('function setAisView(key)'));
-  assert.ok(tour.includes('function syncAisToMap()'));
-  assert.ok(tour.includes("map.on('moveend',syncAisToMap)"));
-  assert.ok(tour.includes('interactive:true'));
-  assert.ok(tour.includes('class="ais-clip"'));
-  assert.ok(tour.includes('left:-42px'));
-  assert.ok(tour.includes('width:calc(100% + 84px)'));
   assert.ok(tour.includes("map.jumpTo({center:v.center,zoom:v.zoom})"));
-  assert.ok(!tour.includes('map.fitBounds(bounds'));
-  assert.ok(!tour.includes("map.flyTo({center:[s.lng,s.lat]"));
-  assert.ok(tour.includes('pointer-events:auto'));
+  assert.ok(tour.includes('interactive:true'));
   assert.ok(tour.includes("closeOnClick:false"));
   assert.ok(tour.includes("map.panBy([shiftX,shiftY]"));
   for(const species of ['Sockeye','Chinook','Coho']) assert.ok(tour.includes(species));
