@@ -1,0 +1,35 @@
+name: Build Ballard AIS route underlay
+
+on:
+  push:
+    branches:
+      - agent/ballard-ais-route-underlay
+    paths:
+      - '.github/workflows/ballard-ais-route-underlay.yml'
+      - 'scripts/patch-ais-route-underlay.py'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/ballard-ais-route-underlay
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Combine AIS with walking routes
+        run: python scripts/patch-ais-route-underlay.py
+      - name: Verify Ballard package
+        run: npm test
+      - name: Commit combined map
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/ballard-locks/tour/index.html tests/ballard-tour.test.js
+          git commit -m 'Combine AIS vessels with Ballard walking routes'
+          git push
