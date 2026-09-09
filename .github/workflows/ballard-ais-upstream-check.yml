@@ -1,0 +1,40 @@
+name: Verify Ballard AIS upstream
+
+on:
+  push:
+    branches:
+      - agent/ballard-single-map-ais
+    paths:
+      - '.github/workflows/ballard-ais-upstream-check.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/ballard-single-map-ais
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify Open Waters Ballard-area GeoJSON
+        run: |
+          node <<'NODE'
+          const url='https://ais.openwaters.io/v1/vessels?bbox='+encodeURIComponent('47.63,-122.45,47.70,-122.32');
+          const r=await fetch(url,{headers:{accept:'application/geo+json,application/json','user-agent':'BallardLocksLiveVerification/1.0'}});
+          if(!r.ok) throw new Error('Open Waters HTTP '+r.status);
+          const data=await r.json();
+          if(data?.type!=='FeatureCollection'||!Array.isArray(data.features)) throw new Error('Not GeoJSON FeatureCollection');
+          console.log(JSON.stringify({status:r.status,features:data.features.length,first:data.features[0]?.properties?.name||data.features[0]?.properties?.mmsi||null}));
+          NODE
+      - name: Parse tour JavaScript
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const html=fs.readFileSync('public/ballard-locks/tour/index.html','utf8');
+          const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
+          const app=scripts.at(-1);
+          if(!app||!app.includes('function initMap')) throw new Error('Tour app script missing');
+          new Function(app);
+          console.log('Tour JavaScript parses successfully');
+          NODE
