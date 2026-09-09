@@ -1,0 +1,35 @@
+name: Fix Ballard tour map interaction
+
+on:
+  push:
+    branches:
+      - agent/ballard-map-interaction-fix
+    paths:
+      - '.github/workflows/ballard-map-interaction-fix.yml'
+      - 'scripts/fix-tour-map-interaction.py'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/ballard-map-interaction-fix
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Patch tour interaction
+        run: python scripts/fix-tour-map-interaction.py
+      - name: Verify Ballard package
+        run: npm test
+      - name: Commit interaction fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/ballard-locks/tour/index.html tests/ballard-tour.test.js
+          git commit -m 'Fix Ballard tour map navigation and popups'
+          git push
