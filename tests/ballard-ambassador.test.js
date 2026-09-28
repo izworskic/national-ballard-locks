@@ -39,7 +39,7 @@ test('tour stop popups use the ambassador interpretation anatomy', () => {
   for (const key of ["see:'", "happening:'", "watch:'", "why:'"]) {
     assert.ok(tour.includes(key), `missing stop field ${key}`);
   }
-  assert.match(tour, /Pick one fixed mark on the concrete wall and watch the waterline move against it/i);
+  assert.match(tour, /(Pick|Choose) one fixed mark on the concrete wall and watch the waterline move against it/i);
   assert.match(tour, /The stop that proves the Locks are doing more than moving boats/i);
 });
 
