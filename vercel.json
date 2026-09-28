@@ -2,13 +2,16 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "functions": {
-    "api/ballard-locks.js": { "maxDuration": 10 }
+    "api/ballard-locks.js": { "maxDuration": 10 },
+    "api/ballard-live-v2.js": { "maxDuration": 10 }
   },
   "headers": [
     { "source": "/api/(.*)", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] },
     { "source": "/(.*)", "headers": [{ "key": "X-Content-Type-Options", "value": "nosniff" }, { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" }] }
   ],
   "rewrites": [
-    { "source": "/", "destination": "/ballard-locks/" }
+    { "source": "/api/ballard-locks", "destination": "/api/ballard-live-v2" },
+    { "source": "/ballard-locks/:path*", "destination": "/ballard-locks-v2/:path*" },
+    { "source": "/", "destination": "/ballard-locks-v2/" }
   ]
 }
