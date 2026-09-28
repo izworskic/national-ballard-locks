@@ -1,0 +1,43 @@
+{
+  "name": "Ballard Ambassador Interpretation Benchmark",
+  "version": "2026-09-28",
+  "releaseThreshold": 90,
+  "purpose": "Keep Ballard decision-first while making the place immediately understandable through concise, accurate, observation-led interpretation.",
+  "lossFunction": {
+    "factWithoutMeaning": 5,
+    "thingWithoutObservation": 5,
+    "dataWithoutInterpretation": 5,
+    "disconnectedSystem": 5,
+    "falseCertainty": 5,
+    "staleOperationalClaim": 5,
+    "textbookVoice": 4,
+    "genericTourismVoice": 4,
+    "expertJargonWithoutTranslation": 4,
+    "passiveVisitor": 4,
+    "rangerShtick": 4,
+    "mobileWallOfText": 4,
+    "copyBloat": 3,
+    "repetition": 3,
+    "historyDump": 3
+  },
+  "dimensions": [
+    {"name":"Immediate comprehension — what is this place?","weight":15,"target":15},
+    {"name":"Explains why it matters","weight":15,"target":14},
+    {"name":"Directs attention — look/watch/listen","weight":15,"target":14},
+    {"name":"Connects boats, water control and salmon into one system","weight":15,"target":14},
+    {"name":"Human expert/ambassador voice","weight":15,"target":14},
+    {"name":"Translates live conditions into visitor experience","weight":10,"target":9},
+    {"name":"Skimmability and mobile restraint","weight":10,"target":9},
+    {"name":"Authority, accuracy and uncertainty","weight":5,"target":5}
+  ],
+  "acceptanceRules": [
+    "Every added block must orient, explain, direct attention, or interpret a live signal.",
+    "The main page must preserve the live decision and best-first-stop above the interpretive layer.",
+    "Every core tour stop must answer: See this, What's happening, Watch for, Why it matters, Right now.",
+    "AIS positions must never be described as guaranteed lock transits or ETAs.",
+    "Seasonal salmon counts must not be presented as guaranteed viewing.",
+    "Operational facts must remain sourced to current public authorities and freshness-limited where needed.",
+    "Avoid generic tourism praise; show the interesting thing and let the visitor form the judgment.",
+    "Prefer a concrete observation prompt over another explanatory paragraph."
+  ]
+}
